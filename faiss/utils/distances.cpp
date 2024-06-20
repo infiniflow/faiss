@@ -31,6 +31,9 @@
 #define FINTEGER long
 #endif
 
+size_t search_cost = 0;
+size_t topk_cost = 0;
+
 extern "C" {
 
 /* declare BLAS functions, see http://www.netlib.org/clapack/cblas/ */
@@ -126,6 +129,7 @@ void fvec_renorm_L2(size_t d, size_t nx, float* __restrict x) {
 /***************************************************************************
  * KNN functions
  ***************************************************************************/
+
 
 namespace {
 
@@ -257,6 +261,8 @@ void exhaustive_inner_product_blas(
     }
 }
 
+
+
 // distance correction is an operator that can be applied to transform
 // the distances
 template <class BlockResultHandler>
@@ -289,6 +295,7 @@ void exhaustive_L2sqr_blas_default_impl(
         y_norms = y_norms2;
     }
 
+
     for (size_t i0 = 0; i0 < nx; i0 += bs_x) {
         size_t i1 = i0 + bs_x;
         if (i1 > nx)
@@ -302,8 +309,7 @@ void exhaustive_L2sqr_blas_default_impl(
                 j1 = ny;
             /* compute the actual dot products */
 
-//            auto begin_ts = std::chrono::high_resolution_clock::now();
-
+            auto begin_ts = std::chrono::high_resolution_clock::now();
             {
                 float one = 1, zero = 0;
                 FINTEGER nyi = j1 - j0, nxi = i1 - i0, di = d;
@@ -321,31 +327,39 @@ void exhaustive_L2sqr_blas_default_impl(
                        ip_block.get(),
                        &nyi);
             }
+            auto search_ts = std::chrono::high_resolution_clock::now();
 
-//            auto duration = std::chrono::high_resolution_clock::now() - begin_ts;
-//            printf("%ld ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
+            search_cost += std::chrono::duration_cast<std::chrono::milliseconds>(search_ts - begin_ts).count();
+            {
 #pragma omp parallel for
-            for (int64_t i = i0; i < i1; i++) {
-                float* ip_line = ip_block.get() + (i - i0) * (j1 - j0);
+                for (int64_t i = i0; i < i1; i++) {
+                    float* ip_line = ip_block.get() + (i - i0) * (j1 - j0);
 
-                for (size_t j = j0; j < j1; j++) {
-                    float ip = *ip_line;
-                    float dis = x_norms[i] + y_norms[j] - 2 * ip;
+                    for (size_t j = j0; j < j1; j++) {
+                        float ip = *ip_line;
+                        float dis = x_norms[i] + y_norms[j] - 2 * ip;
 
-                    // negative values can occur for identical vectors
-                    // due to roundoff errors
-                    if (dis < 0)
-                        dis = 0;
+                        // negative values can occur for identical vectors
+                        // due to roundoff errors
+                        if (dis < 0)
+                            dis = 0;
 
-                    *ip_line = dis;
-                    ip_line++;
+                        *ip_line = dis;
+                        ip_line++;
+                    }
                 }
+                res.add_results(j0, j1, ip_block.get());
             }
-            res.add_results(j0, j1, ip_block.get());
+
+            auto topk_ts = std::chrono::high_resolution_clock::now();
+            topk_cost += std::chrono::duration_cast<std::chrono::milliseconds>(topk_ts - search_ts).count();
+
         }
         res.end_multiple();
         InterruptCallback::check();
     }
+
+
 }
 
 template <class BlockResultHandler>

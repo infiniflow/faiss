@@ -77,6 +77,9 @@ double elapsed() {
     return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
+extern size_t search_cost;
+extern size_t topk_cost;
+
 int main() {
     double t0 = elapsed();
 
@@ -253,6 +256,8 @@ int main() {
 //            ss << std::chrono::duration_cast<std::chrono::seconds>(duration).count() << "s";
 //        }
         std::cout << ss.str() << std::endl;
+
+        printf("Search cost: %ld, topk cost: %ld, total cost: %ld\n", search_cost, topk_cost, search_cost + topk_cost);
 
         printf("[%.3f s] Compute recalls\n", elapsed() - t0);
 
