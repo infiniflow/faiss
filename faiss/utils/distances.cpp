@@ -275,7 +275,7 @@ void exhaustive_L2sqr_blas_default_impl(
     /* block sizes */
     const size_t bs_x = distance_compute_blas_query_bs;
     const size_t bs_y = distance_compute_blas_database_bs;
-    // const size_t bs_x = 16, bs_y = 16;
+//     const size_t bs_x = 16, bs_y = 16;
     std::unique_ptr<float[]> ip_block(new float[bs_x * bs_y]);
     std::unique_ptr<float[]> x_norms(new float[nx]);
     std::unique_ptr<float[]> del2;
@@ -301,6 +301,9 @@ void exhaustive_L2sqr_blas_default_impl(
             if (j1 > ny)
                 j1 = ny;
             /* compute the actual dot products */
+
+//            auto begin_ts = std::chrono::high_resolution_clock::now();
+
             {
                 float one = 1, zero = 0;
                 FINTEGER nyi = j1 - j0, nxi = i1 - i0, di = d;
@@ -318,6 +321,9 @@ void exhaustive_L2sqr_blas_default_impl(
                        ip_block.get(),
                        &nyi);
             }
+
+//            auto duration = std::chrono::high_resolution_clock::now() - begin_ts;
+//            printf("%ld ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(duration).count());
 #pragma omp parallel for
             for (int64_t i = i0; i < i1; i++) {
                 float* ip_line = ip_block.get() + (i - i0) * (j1 - j0);
@@ -648,7 +654,7 @@ void knn_inner_product_select(
 
 int distance_compute_blas_threshold = 20;
 int distance_compute_blas_query_bs = 4096;
-int distance_compute_blas_database_bs = 1024;
+int distance_compute_blas_database_bs = 1024*128;
 int distance_compute_min_k_reservoir = 100;
 
 void knn_inner_product(

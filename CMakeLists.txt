@@ -22,22 +22,22 @@ cmake_minimum_required(VERSION 3.24.0 FATAL_ERROR)
 
 set(FAISS_LANGUAGES CXX)
 
-if(FAISS_ENABLE_GPU)
-  list(APPEND FAISS_LANGUAGES CUDA)
-endif()
+#if(FAISS_ENABLE_GPU)
+#  list(APPEND FAISS_LANGUAGES CUDA)
+#endif()
 
-if(FAISS_ENABLE_RAFT)
-include(cmake/thirdparty/fetch_rapids.cmake)
-include(rapids-cmake)
-include(rapids-cpm)
-include(rapids-cuda)
-include(rapids-export)
-include(rapids-find)
-
-rapids_cuda_init_architectures(faiss)
-rapids_cuda_init_architectures(pyfaiss)
-rapids_cuda_init_architectures(faiss_c_library)
-endif()
+#if(FAISS_ENABLE_RAFT)
+##include(cmake/thirdparty/fetch_rapids.cmake)
+##include(rapids-cmake)
+##include(rapids-cpm)
+##include(rapids-cuda)
+##include(rapids-export)
+##include(rapids-find)
+##
+##rapids_cuda_init_architectures(faiss)
+##rapids_cuda_init_architectures(pyfaiss)
+##rapids_cuda_init_architectures(faiss_c_library)
+#endif()
 
 project(faiss
   VERSION 1.8.0
@@ -52,44 +52,45 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # Valid values are "generic", "avx2", "avx512".
 option(FAISS_OPT_LEVEL "" "generic")
-option(FAISS_ENABLE_GPU "Enable support for GPU indexes." ON)
+option(FAISS_ENABLE_GPU "Enable support for GPU indexes." OFF)
 option(FAISS_ENABLE_RAFT "Enable RAFT for GPU indexes." OFF)
-option(FAISS_ENABLE_PYTHON "Build Python extension." ON)
+option(FAISS_ENABLE_PYTHON "Build Python extension." OFF)
+
 option(FAISS_ENABLE_C_API "Build C API." OFF)
 
 if(FAISS_ENABLE_GPU)
-  set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
-  enable_language(CUDA)
+#  set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
+#  enable_language(CUDA)
 endif()
 
-if(FAISS_ENABLE_RAFT AND NOT TARGET raft::raft)
-   find_package(raft COMPONENTS compiled distributed)
- endif()
+#if(FAISS_ENABLE_RAFT AND NOT TARGET raft::raft)
+#   find_package(raft COMPONENTS compiled distributed)
+# endif()
 
 add_subdirectory(faiss)
 
-if(FAISS_ENABLE_GPU)
-  add_subdirectory(faiss/gpu)
-endif()
-
-if(FAISS_ENABLE_PYTHON)
-  add_subdirectory(faiss/python)
-endif()
-
-if(FAISS_ENABLE_C_API)
-  add_subdirectory(c_api)
-endif()
+#if(FAISS_ENABLE_GPU)
+##  add_subdirectory(faiss/gpu)
+#endif()
+#
+#if(FAISS_ENABLE_PYTHON)
+##  add_subdirectory(faiss/python)
+#endif()
+#
+#if(FAISS_ENABLE_C_API)
+#  add_subdirectory(c_api)
+#endif()
 
 add_subdirectory(demos)
 add_subdirectory(benchs)
 add_subdirectory(tutorial/cpp)
 
 # CTest must be included in the top level to enable `make test` target.
-include(CTest)
-if(BUILD_TESTING)
-  add_subdirectory(tests)
-
-  if(FAISS_ENABLE_GPU)
-    add_subdirectory(faiss/gpu/test)
-  endif()
-endif()
+#include(CTest)
+#if(BUILD_TESTING)
+#  add_subdirectory(tests)
+#
+#  if(FAISS_ENABLE_GPU)
+##    add_subdirectory(faiss/gpu/test)
+#  endif()
+#endif()

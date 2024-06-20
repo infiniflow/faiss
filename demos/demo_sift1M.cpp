@@ -19,6 +19,9 @@
 
 #include <faiss/AutoTune.h>
 #include <faiss/index_factory.h>
+#include <sstream>
+#include <iostream>
+#include <chrono>
 
 /**
  * To run this demo, please download the ANN_SIFT1M dataset from
@@ -78,10 +81,10 @@ int main() {
     double t0 = elapsed();
 
     // this is typically the fastest one.
-    const char* index_key = "IVF4096,Flat";
+//    const char* index_key = "IVF4096,Flat";
 
     // these ones have better memory usage
-    // const char *index_key = "Flat";
+     const char *index_key = "Flat";
     // const char *index_key = "PQ32";
     // const char *index_key = "PCA80,Flat";
     // const char *index_key = "IVF4096,PQ8+16";
@@ -94,11 +97,17 @@ int main() {
 
     size_t d;
 
+    std::string base_path = "/home/infiniflow/Documents/data/sift1M/";
+    std::string sift_learn_path = base_path + "sift_learn.fvecs";
+    std::string sift_base_path = base_path + "sift_base.fvecs";
+    std::string sift_query_path = base_path + "sift_query.fvecs";
+    std::string sift_groundtruth_path = base_path + "sift_groundtruth.ivecs";
+
     {
         printf("[%.3f s] Loading train set\n", elapsed() - t0);
 
         size_t nt;
-        float* xt = fvecs_read("sift1M/sift_learn.fvecs", &d, &nt);
+        float* xt = fvecs_read(sift_learn_path.c_str(), &d, &nt);
 
         printf("[%.3f s] Preparing index \"%s\" d=%ld\n",
                elapsed() - t0,
@@ -116,7 +125,7 @@ int main() {
         printf("[%.3f s] Loading database\n", elapsed() - t0);
 
         size_t nb, d2;
-        float* xb = fvecs_read("sift1M/sift_base.fvecs", &d2, &nb);
+        float* xb = fvecs_read(sift_base_path.c_str(), &d2, &nb);
         assert(d == d2 || !"dataset does not have same dimension as train set");
 
         printf("[%.3f s] Indexing database, size %ld*%ld\n",
@@ -136,7 +145,7 @@ int main() {
         printf("[%.3f s] Loading queries\n", elapsed() - t0);
 
         size_t d2;
-        xq = fvecs_read("sift1M/sift_query.fvecs", &d2, &nq);
+        xq = fvecs_read(sift_query_path.c_str(), &d2, &nq);
         assert(d == d2 || !"query does not have same dimension as train set");
     }
 
@@ -150,7 +159,7 @@ int main() {
 
         // load ground-truth and convert int to long
         size_t nq2;
-        int* gt_int = ivecs_read("sift1M/sift_groundtruth.ivecs", &k, &nq2);
+        int* gt_int = ivecs_read(sift_groundtruth_path.c_str(), &k, &nq2);
         assert(nq2 == nq || !"incorrect nb of ground truth entries");
 
         gt = new faiss::idx_t[k * nq];
@@ -163,46 +172,46 @@ int main() {
     // Result of the auto-tuning
     std::string selected_params;
 
-    { // run auto-tuning
-
-        printf("[%.3f s] Preparing auto-tune criterion 1-recall at 1 "
-               "criterion, with k=%ld nq=%ld\n",
-               elapsed() - t0,
-               k,
-               nq);
-
-        faiss::OneRecallAtRCriterion crit(nq, 1);
-        crit.set_groundtruth(k, nullptr, gt);
-        crit.nnn = k; // by default, the criterion will request only 1 NN
-
-        printf("[%.3f s] Preparing auto-tune parameters\n", elapsed() - t0);
-
-        faiss::ParameterSpace params;
-        params.initialize(index);
-
-        printf("[%.3f s] Auto-tuning over %ld parameters (%ld combinations)\n",
-               elapsed() - t0,
-               params.parameter_ranges.size(),
-               params.n_combinations());
-
-        faiss::OperatingPoints ops;
-        params.explore(index, nq, xq, crit, &ops);
-
-        printf("[%.3f s] Found the following operating points: \n",
-               elapsed() - t0);
-
-        ops.display();
-
-        // keep the first parameter that obtains > 0.5 1-recall@1
-        for (int i = 0; i < ops.optimal_pts.size(); i++) {
-            if (ops.optimal_pts[i].perf > 0.5) {
-                selected_params = ops.optimal_pts[i].key;
-                break;
-            }
-        }
-        assert(selected_params.size() >= 0 ||
-               !"could not find good enough op point");
-    }
+//    { // run auto-tuning
+//
+//        printf("[%.3f s] Preparing auto-tune criterion 1-recall at 1 "
+//               "criterion, with k=%ld nq=%ld\n",
+//               elapsed() - t0,
+//               k,
+//               nq);
+//
+//        faiss::OneRecallAtRCriterion crit(nq, 1);
+//        crit.set_groundtruth(k, nullptr, gt);
+//        crit.nnn = k; // by default, the criterion will request only 1 NN
+//
+//        printf("[%.3f s] Preparing auto-tune parameters\n", elapsed() - t0);
+//
+//        faiss::ParameterSpace params;
+//        params.initialize(index);
+//
+//        printf("[%.3f s] Auto-tuning over %ld parameters (%ld combinations)\n",
+//               elapsed() - t0,
+//               params.parameter_ranges.size(),
+//               params.n_combinations());
+//
+//        faiss::OperatingPoints ops;
+//        params.explore(index, nq, xq, crit, &ops);
+//
+//        printf("[%.3f s] Found the following operating points: \n",
+//               elapsed() - t0);
+//
+//        ops.display();
+//
+//        // keep the first parameter that obtains > 0.5 1-recall@1
+//        for (int i = 0; i < ops.optimal_pts.size(); i++) {
+//            if (ops.optimal_pts[i].perf > 0.5) {
+//                selected_params = ops.optimal_pts[i].key;
+//                break;
+//            }
+//        }
+//        assert(selected_params.size() >= 0 ||
+//               !"could not find good enough op point");
+//    }
 
     { // Use the found configuration to perform a search
 
@@ -222,7 +231,28 @@ int main() {
         faiss::idx_t* I = new faiss::idx_t[nq * k];
         float* D = new float[nq * k];
 
-        index->search(nq, xq, k, D, I);
+        size_t num_queries = nq;
+        float* query_array = xq;
+
+        auto begin_ts = std::chrono::high_resolution_clock::now();
+
+//         for(size_t i = 0; i < num_queries; ++ i) {
+//            index->search(1, query_array + i * 128 * sizeof(float), k, D, I);
+//         }
+        index->search(num_queries, query_array, k, D, I);
+
+        auto duration = std::chrono::high_resolution_clock::now() - begin_ts;
+        std::stringstream ss;
+//        if (duration.count() <= 1000) {
+//            ss << duration.count() << "ns";
+//        } else if (duration.count() <= 1000 * 1000) {
+//            ss << std::chrono::duration_cast<std::chrono::microseconds>(duration).count() << "us";
+//        } else if (duration.count() <= 1000 * 1000 * 1000) {
+            ss << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << "ms";
+//        } else {
+//            ss << std::chrono::duration_cast<std::chrono::seconds>(duration).count() << "s";
+//        }
+        std::cout << ss.str() << std::endl;
 
         printf("[%.3f s] Compute recalls\n", elapsed() - t0);
 
